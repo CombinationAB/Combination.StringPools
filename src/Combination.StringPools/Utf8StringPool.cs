@@ -11,7 +11,6 @@ internal sealed class Utf8StringPool : IUtf8DeduplicatedStringPool
         PoolIndexBits =
             24; // Number of bits to use for pool index in handle (more bits = more pools, but less strings per pool)
 
-    private const int DeduplicationTableBits = 10; // Number of bits to use for deduplication table (2^bits entries)
     private static readonly List<Utf8StringPool?> Pools = new();
     internal static long totalAllocatedBytes, totalUsedBytes, totalAddedBytes;
 
@@ -21,12 +20,13 @@ internal sealed class Utf8StringPool : IUtf8DeduplicatedStringPool
 
     private readonly List<ulong>?[]? deduplicationTable;
     private readonly DisposeLock disposeLock = new();
+    private readonly int deduplicationTableBits = 10; // Number of bits to use for deduplication table (2^bits entries)
     private readonly int pageSize;
 
     private readonly object writeLock = new();
 
     // ReSharper disable once MemberCanBePrivate.Global
-    public Utf8StringPool(int pageSize, int initialPageCount, bool deduplicateStrings)
+    public Utf8StringPool(int pageSize, int initialPageCount, bool deduplicateStrings, int deduplicationTableBits)
     {
         if (pageSize < 16)
         {
@@ -34,15 +34,21 @@ internal sealed class Utf8StringPool : IUtf8DeduplicatedStringPool
             throw new ArgumentOutOfRangeException(nameof(pageSize));
         }
 
+        if (deduplicationTableBits < 2 || deduplicationTableBits > 24)
+        {
+            throw new ArgumentOutOfRangeException(nameof(deduplicationTableBits));
+        }
+
         if (initialPageCount < 0)
         {
             throw new ArgumentOutOfRangeException(nameof(initialPageCount));
         }
 
+        this.deduplicationTableBits = deduplicationTableBits;
         this.pageSize = pageSize;
         if (deduplicateStrings)
         {
-            deduplicationTable = new List<ulong>?[1 << DeduplicationTableBits];
+            deduplicationTable = new List<ulong>?[1 << deduplicationTableBits];
         }
 
         bool didAlloc;
@@ -202,7 +208,7 @@ internal sealed class Utf8StringPool : IUtf8DeduplicatedStringPool
                 return false;
             }
 
-            var tableIndex = stringHash & ((1 << DeduplicationTableBits) - 1);
+            var tableIndex = stringHash & ((1 << deduplicationTableBits) - 1);
             var table = deduplicationTable[tableIndex];
             if (table is null)
             {
@@ -233,7 +239,7 @@ internal sealed class Utf8StringPool : IUtf8DeduplicatedStringPool
             return;
         }
 
-        var tableIndex = stringHash & ((1 << DeduplicationTableBits) - 1);
+        var tableIndex = stringHash & ((1 << deduplicationTableBits) - 1);
         var table = deduplicationTable[tableIndex] ?? (deduplicationTable[tableIndex] = new List<ulong>());
 
         table.Add(handle);

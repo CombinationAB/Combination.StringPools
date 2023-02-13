@@ -6,6 +6,7 @@ namespace Combination.StringPools;
 public static class StringPool
 {
     private const int DefaultPageSize = 16384; // Size of a pool memory page in bytes
+    private const int DefaultDeduplicationTableBits = 10; // Size of a pool memory page in bytes
 
 
     /// <summary>
@@ -20,7 +21,18 @@ public static class StringPool
     /// <param name="pageSize">The size of the memory pages to allocate (allocation increment quantum).</param>
     /// <param name="initialPageCount">The initial number of pages to allocate.</param>
     /// <returns>The newly create string pool.</returns>
-    public static IUtf8StringPool Utf8(int pageSize, int initialPageCount) => new Utf8StringPool(pageSize, initialPageCount, false);
+    public static IUtf8StringPool Utf8(int pageSize, int initialPageCount) => Utf8(pageSize, initialPageCount, DefaultDeduplicationTableBits);
+
+    /// <summary>
+    /// A Utf8 string pool that does not deduplicate strings, created with specified page size and initial page count.
+    /// </summary>
+    /// <param name="pageSize">The size of the memory pages to allocate (allocation increment quantum).</param>
+    /// <param name="initialPageCount">The initial number of pages to allocate.</param>
+    /// <param name="deduplicationTableBits">Number of bits in the deduplication table (size will be 2^bits).</param>
+    /// <returns>The newly create string pool.</returns>
+    public static IUtf8StringPool Utf8(int pageSize, int initialPageCount, int deduplicationTableBits) =>
+        new Utf8StringPool(pageSize, initialPageCount, false, deduplicationTableBits);
+
 
     /// <summary>
     /// A Utf8 string pool that de-duplicates equal strings, created with default page size and initial page count.
@@ -34,7 +46,18 @@ public static class StringPool
     /// <param name="pageSize">The size of the memory pages to allocate (allocation increment quantum).</param>
     /// <param name="initialPageCount">The initial number of pages to allocate.</param>
     /// <returns>The newly create string pool.</returns>
-    public static IUtf8DeduplicatedStringPool DeduplicatedUtf8(int pageSize, int initialPageCount) => new Utf8StringPool(pageSize, initialPageCount, true);
+    public static IUtf8DeduplicatedStringPool DeduplicatedUtf8(int pageSize, int initialPageCount) =>
+        DeduplicatedUtf8(pageSize, initialPageCount, DefaultDeduplicationTableBits);
+
+    /// <summary>
+    /// A Utf8 string pool that de-duplicates equal strings, created with specified page size and initial page count.
+    /// </summary>
+    /// <param name="pageSize">The size of the memory pages to allocate (allocation increment quantum).</param>
+    /// <param name="initialPageCount">The initial number of pages to allocate.</param>
+    /// <param name="deduplicationTableBits">Number of bits in the deduplication table (size will be 2^bits).</param>
+    /// <returns>The newly create string pool.</returns>
+    public static IUtf8DeduplicatedStringPool DeduplicatedUtf8(int pageSize, int initialPageCount, int deduplicationTableBits) =>
+        new Utf8StringPool(pageSize, initialPageCount, true, deduplicationTableBits);
 
     /// <summary>
     /// The total number of bytes allocated in all string pools.
