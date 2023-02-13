@@ -80,6 +80,15 @@ internal sealed class Utf8StringPool : IUtf8DeduplicatedStringPool
 
         var stringHash = 0;
         var didAlloc = false;
+        if (deduplicationTable is not null)
+        {
+            stringHash = unchecked((int)StringHash.Compute(value));
+            if (TryDeduplicate(stringHash, value, out var result))
+            {
+                return new PooledUtf8String(result);
+            }
+        }
+
         lock (writeLock)
         {
             if (disposeLock.IsDisposed)
@@ -89,14 +98,6 @@ internal sealed class Utf8StringPool : IUtf8DeduplicatedStringPool
 
             Interlocked.Add(ref totalAddedBytes, structLength);
             Interlocked.Add(ref addedBytes, structLength);
-            if (deduplicationTable is not null)
-            {
-                stringHash = unchecked((int)StringHash.Compute(value));
-                if (TryDeduplicate(stringHash, value, out var result))
-                {
-                    return new PooledUtf8String(result);
-                }
-            }
 
             var currentPageIndex = checked((int)(writePosition / pageSize));
             var pageWritePosition = writePosition % pageSize;
@@ -209,8 +210,10 @@ internal sealed class Utf8StringPool : IUtf8DeduplicatedStringPool
                 return false;
             }
 
-            foreach (var handle in table)
+            var ct = table.Count;
+            for (var i = 0; i < ct; ++i)
             {
+                var handle = table[i];
                 if (GetFromPool(handle) == value)
                 {
                     offset = handle;

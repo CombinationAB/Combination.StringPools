@@ -207,7 +207,7 @@ public class Test_Allocation
                         {
                             var str = pool.Add("foobar " + ((seed + i) % 1000));
                             Interlocked.Add(ref stringSum, str.ToString().Length);
-                            if (i == 100)
+                            if (i == 10000)
                             {
                                 Interlocked.Increment(ref numStarted);
                             }
