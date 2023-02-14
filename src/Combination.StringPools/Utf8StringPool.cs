@@ -86,6 +86,7 @@ internal sealed class Utf8StringPool : IUtf8DeduplicatedStringPool
 
         var stringHash = 0;
         var didAlloc = false;
+        var oldSize = usedBytes;
         if (deduplicationTable is not null)
         {
             stringHash = unchecked((int)StringHash.Compute(value));
@@ -100,6 +101,11 @@ internal sealed class Utf8StringPool : IUtf8DeduplicatedStringPool
             if (disposeLock.IsDisposed)
             {
                 throw new ObjectDisposedException("String pool is already disposed");
+            }
+
+            if (oldSize != usedBytes && TryDeduplicate(stringHash, value, out var result))
+            {
+                return new PooledUtf8String(result);
             }
 
             Interlocked.Add(ref totalAddedBytes, structLength);
@@ -277,7 +283,7 @@ internal sealed class Utf8StringPool : IUtf8DeduplicatedStringPool
             var refPool = Pools[(int)poolIndex];
             if (refPool != this)
             {
-                throw new InvalidOperationException("Internal error: Deduplicated string pool mismatch");
+                throw new InvalidOperationException($"Internal error: Deduplicated string pool mismatch ({index} != {poolIndex})");
             }
 #endif
             return Encoding.UTF8.GetString(GetStringBytes(offset));
@@ -411,6 +417,16 @@ internal sealed class Utf8StringPool : IUtf8DeduplicatedStringPool
 
     internal static bool StringsEqual(ulong a, ulong b)
     {
+        if (a == ulong.MaxValue)
+        {
+            return b == ulong.MaxValue;
+        }
+
+        if (b == ulong.MaxValue)
+        {
+            return false;
+        }
+
         var aPoolIndex = a >> (64 - PoolIndexBits);
         var bPoolIndex = b >> (64 - PoolIndexBits);
         if (aPoolIndex >= (ulong)Pools.Count)

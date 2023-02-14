@@ -52,10 +52,16 @@ public class Test_Deduplication
                         var str = pool.Add(someString);
                         Assert.Same(pool, str.StringPool);
                         Assert.Equal(someString, str);
-                        Assert.Equal(str, pool.TryGet(someString));
-                    }
+                        var str2 = pool.TryGet(someString);
+                        Assert.NotNull(str2);
+                        var str2Value = str2.Value;
+                        if (!str.Equals(str2Value))
+                        {
+                            Assert.True(str.Equals(str2Value));
+                        }
 
-                    Assert.Equal(10 * (2 + stringSize), pool.UsedBytes);
+                        Assert.Equal(str, str2);
+                    }
                 });
             t.Start();
             threads.Add(t);

@@ -16,6 +16,18 @@ public class Test_Operators
         Assert.Equal("Hello", pool.Add("Hello").ToString());
         Assert.Equal("Hello", (string)pool.Add("Hello"));
     }
+    [Fact]
+    public void Test_Compare_Empty()
+    {
+        using var pool = StringPool.Utf8(4096, 1);
+        var s = pool.Add("foo");
+        Assert.NotEqual(PooledUtf8String.Empty, s);
+        Assert.NotEqual(s, PooledUtf8String.Empty);
+        Assert.False(s == PooledUtf8String.Empty);
+        Assert.False(PooledUtf8String.Empty == s);
+        Assert.True(s != PooledUtf8String.Empty);
+        Assert.True(PooledUtf8String.Empty != s);
+    }
 
     [Fact]
     public void Test_Equality_Same_Pool()
