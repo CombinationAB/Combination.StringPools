@@ -94,7 +94,7 @@ internal sealed class Utf8StringPool : IUtf8DeduplicatedStringPool
         if (deduplicationTable is not null)
         {
             stringHash = unchecked((int)StringHash.Compute(value));
-            if (TryDeduplicate(stringHash, value, out var result))
+            if (TryDeduplicate(stringHash, length, value, out var result))
             {
                 return new PooledUtf8String(result);
             }
@@ -107,7 +107,7 @@ internal sealed class Utf8StringPool : IUtf8DeduplicatedStringPool
                 throw new ObjectDisposedException("String pool is already disposed");
             }
 
-            if (oldSize != usedBytes && TryDeduplicate(stringHash, value, out var result))
+            if (oldSize != usedBytes && TryDeduplicate(stringHash, length, value, out var result))
             {
                 return new PooledUtf8String(result);
             }
@@ -197,7 +197,8 @@ internal sealed class Utf8StringPool : IUtf8DeduplicatedStringPool
             throw new InvalidOperationException("Deduplication is not enabled for this pool");
         }
 
-        if (!TryDeduplicate(unchecked((int)StringHash.Compute(value)), value, out var result))
+        var length = Encoding.UTF8.GetByteCount(value);
+        if (!TryDeduplicate(unchecked((int)StringHash.Compute(value)), length, value, out var result))
         {
             return null;
         }
@@ -205,7 +206,7 @@ internal sealed class Utf8StringPool : IUtf8DeduplicatedStringPool
         return new PooledUtf8String(result);
     }
 
-    private bool TryDeduplicate(int stringHash, string value, out ulong offset)
+    private bool TryDeduplicate(int stringHash, int utf8ByteCount, string value, out ulong offset)
     {
         using (disposeLock.PreventDispose())
         {
@@ -223,15 +224,21 @@ internal sealed class Utf8StringPool : IUtf8DeduplicatedStringPool
                 return false;
             }
 
+            Span<byte> utf8 = stackalloc byte[utf8ByteCount];
+            Encoding.UTF8.GetBytes(value, utf8);
             var ct = table.Count;
             for (var i = 0; i < ct; ++i)
             {
                 var handle = table[i];
-                if (GetFromPool(handle) == value)
+                var poolOffset = handle & ((1UL << (64 - PoolIndexBits)) - 1);
+                var poolBytes = GetStringBytes(poolOffset);
+                if (poolBytes.Length != utf8ByteCount || !utf8.SequenceEqual(poolBytes))
                 {
-                    offset = handle;
-                    return true;
+                    continue;
                 }
+
+                offset = handle;
+                return true;
             }
 
             offset = ulong.MaxValue;
