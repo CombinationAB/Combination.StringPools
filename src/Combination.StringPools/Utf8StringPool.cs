@@ -87,6 +87,10 @@ internal sealed class Utf8StringPool : IUtf8DeduplicatedStringPool
         var stringHash = 0;
         var didAlloc = false;
         var oldSize = usedBytes;
+
+        Interlocked.Add(ref totalAddedBytes, structLength);
+        Interlocked.Add(ref addedBytes, structLength);
+
         if (deduplicationTable is not null)
         {
             stringHash = unchecked((int)StringHash.Compute(value));
@@ -107,9 +111,6 @@ internal sealed class Utf8StringPool : IUtf8DeduplicatedStringPool
             {
                 return new PooledUtf8String(result);
             }
-
-            Interlocked.Add(ref totalAddedBytes, structLength);
-            Interlocked.Add(ref addedBytes, structLength);
 
             var currentPageIndex = checked((int)(writePosition / pageSize));
             var pageWritePosition = writePosition % pageSize;
