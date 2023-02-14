@@ -48,4 +48,6 @@ public readonly struct PooledUtf8String : IEquatable<PooledUtf8String>
     public IUtf8StringPool? StringPool => Utf8StringPool.GetStringPool(handle);
 
     public long Handle => unchecked((long)(handle ^ 0xaaaaaaaaaaaaaaaaUL));
+
+    public bool IsEmpty => handle == ulong.MaxValue;
 }
