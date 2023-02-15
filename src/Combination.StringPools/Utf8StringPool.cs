@@ -1,4 +1,5 @@
-﻿using System.Runtime.InteropServices;
+﻿using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Text;
 
 // ReSharper disable InconsistentNaming - We used internal static fields to avoid unnecessary wrapping
@@ -20,7 +21,7 @@ internal sealed class Utf8StringPool : IUtf8DeduplicatedStringPool
 
     private readonly List<ulong>?[]? deduplicationTable;
     private readonly DisposeLock disposeLock = new();
-    private readonly int deduplicationTableBits = 10; // Number of bits to use for deduplication table (2^bits entries)
+    private readonly int deduplicationTableBits; // Number of bits to use for deduplication table (2^bits entries)
     private readonly int pageSize;
 
     private readonly object writeLock = new();
@@ -139,9 +140,9 @@ internal sealed class Utf8StringPool : IUtf8DeduplicatedStringPool
 
             Interlocked.Add(ref totalUsedBytes, structLength);
             Interlocked.Add(ref usedBytes, structLength);
-            Marshal.WriteInt16(writePtr + pageStartOffset, unchecked((short)checked((ushort)length)));
             unsafe
             {
+                *(ushort*)(writePtr + pageStartOffset) = checked((ushort)length);
                 var stringWritePtr = new Span<byte>((byte*)(writePtr + pageStartOffset + 2), length);
                 Encoding.UTF8.GetBytes(value, stringWritePtr);
             }
@@ -281,6 +282,7 @@ internal sealed class Utf8StringPool : IUtf8DeduplicatedStringPool
         return pool.GetFromPool(handle);
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
     private string GetFromPool(ulong handle)
     {
         using (disposeLock.PreventDispose())
@@ -298,6 +300,7 @@ internal sealed class Utf8StringPool : IUtf8DeduplicatedStringPool
         }
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
     private ReadOnlySpan<byte> GetStringBytes(ulong offset)
     {
         var page = checked((int)(offset / (ulong)pageSize));
@@ -309,9 +312,9 @@ internal sealed class Utf8StringPool : IUtf8DeduplicatedStringPool
                 $"Invalid handle value, page {page} is out of range 0..{pages.Count}, strings {addedBytes} {usedBytes}  --- {offset}");
         }
 
-        var length = unchecked((ushort)Marshal.ReadInt16(pages[page] + pageOffset));
         unsafe
         {
+            var length = ((ushort*)(pages[page] + pageOffset))[0];
             return new ReadOnlySpan<byte>((byte*)(pages[page] + pageOffset + 2), length);
         }
     }
@@ -349,6 +352,7 @@ internal sealed class Utf8StringPool : IUtf8DeduplicatedStringPool
         return poolIndex >= (ulong)Pools.Count ? null : Pools[(int)poolIndex];
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
     private int GetStringLength(ulong offset)
     {
         using (disposeLock.PreventDispose())
