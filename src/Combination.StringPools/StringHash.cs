@@ -20,7 +20,7 @@ public static class StringHash
         => ComputeRemainder(OffsetBasis, span);
 
     /// <summary>
-    /// Computes the Fowler–Noll–Vo 1a hash of the given character range.
+    /// Computes the Fowler–Noll–Vo 1a hash of the given range of bytes representing an UTF-8 encoded string.
     /// </summary>
     /// <param name="span">The range of characters</param>
     /// <returns>The hash value</returns>
