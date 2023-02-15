@@ -4,7 +4,8 @@ using BenchmarkDotNet.Running;
 using Combination.StringPools;
 using Performance;
 
-var summary = BenchmarkRunner.Run<Deduplication>();
+//var summary = BenchmarkRunner.Run<Deduplication>();
+var summary = BenchmarkRunner.Run<Hashing>();
 
 #if false
 foreach (var sizeMultiple in Enumerable.Range(1, 11))

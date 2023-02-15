@@ -487,4 +487,7 @@ internal sealed class Utf8StringPool : IUtf8DeduplicatedStringPool
             return aPool.GetStringBytes(aOffset).SequenceEqual(aPool.GetStringBytes(bOffset));
         }
     }
+
+    public override string ToString() =>
+        $"Utf8StringPool(bits={deduplicationTableBits}, dedup={deduplicationTable is not null}, pages={pages.Count}, used={usedBytes}, added={addedBytes})";
 }

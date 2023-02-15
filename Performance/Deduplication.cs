@@ -16,18 +16,18 @@ public class Deduplication
     public IUtf8DeduplicatedStringPool Pool;
 
     [Benchmark]
-    public void DoAdd() => Pool.Add(DataSet[Random.Next(0, DataSet.Length)]);
+    public PooledUtf8String DoAdd() => Pool.Add(DataSet[Random.Next(0, DataSet.Length)]);
 
     public IEnumerable<string[]> CreateDataSet()
     {
-        foreach (var size in new[] { 10000, 100000, 1000000, 10000000 })
+        foreach (var size in new[] { 10000, 100000, 1000000 })
         {
             yield return Enumerable.Range(0, size).Select(_ => RandomString()).ToArray();
         }
     }
 
     public IEnumerable<IUtf8DeduplicatedStringPool> CreatePools()
-        => (new[] { 9, 10, 12, 14, 16 }).Select(bits => StringPool.DeduplicatedUtf8(4096, 1, bits));
+        => (new[] { 10, 12, 16 }).Select(bits => StringPool.DeduplicatedUtf8(4096, 1, bits));
 
     internal static string RandomString()
     {
