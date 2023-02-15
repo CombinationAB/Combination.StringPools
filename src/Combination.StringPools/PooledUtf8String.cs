@@ -39,7 +39,7 @@ public readonly struct PooledUtf8String : IEquatable<PooledUtf8String>
     }
 
     public override int GetHashCode()
-        => unchecked((int)StringHash.Compute(Utf8StringPool.Get(handle)));
+        => unchecked((int)StringHash.Compute(Utf8StringPool.GetBytes(handle)));
 
     public override string ToString() => Utf8StringPool.Get(handle);
 

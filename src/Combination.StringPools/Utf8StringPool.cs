@@ -267,6 +267,16 @@ internal sealed class Utf8StringPool : IUtf8DeduplicatedStringPool
             return string.Empty;
         }
 
+        return Encoding.UTF8.GetString(GetBytes(handle));
+    }
+
+    public static ReadOnlySpan<byte> GetBytes(ulong handle)
+    {
+        if (handle == ulong.MaxValue)
+        {
+            return Array.Empty<byte>();
+        }
+
         var poolIndex = handle >> (64 - PoolIndexBits);
         if (poolIndex >= (ulong)Pools.Count)
         {
@@ -283,7 +293,7 @@ internal sealed class Utf8StringPool : IUtf8DeduplicatedStringPool
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
-    private string GetFromPool(ulong handle)
+    private ReadOnlySpan<byte> GetFromPool(ulong handle)
     {
         using (disposeLock.PreventDispose())
         {
@@ -296,7 +306,7 @@ internal sealed class Utf8StringPool : IUtf8DeduplicatedStringPool
                 throw new InvalidOperationException($"Internal error: Deduplicated string pool mismatch ({index} != {poolIndex})");
             }
 #endif
-            return Encoding.UTF8.GetString(GetStringBytes(offset));
+            return GetStringBytes(offset);
         }
     }
 
