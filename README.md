@@ -18,6 +18,8 @@ There is a built in string pool in .NET, which can be used by calling `string.In
 
 All string pools in this library are letting the application control their lifecycle by implementing `IDisposable`. When trying to use a string from a disposed pool, an `ObjectDisposedException` will be thrown.
 
+Note that a deduplicated string pool can be used as an efficient hash set. By using `TryGet`, it deterministically answers if the string is in the pool or not.
+
 ### Avoid GC pressure
 
 This library uses compact unmanaged memory pages for the string pool. This will alleviate some of the problems with mixing long-lived and short-lived objects in the GC. Additionally, the overhead of a string is just 2 bytes over the UTF-8 string length. The .NET string is at least 32 bytes, plus alignment overhead. It makes a difference when dealing with millions of strings.
@@ -54,3 +56,30 @@ The maximum size of a string pool is 2^40 or about one terabyte. Depending on th
 
 ### Deduplication uses a fixed size hash table
 The deduplication works by hashing the string and then in the associated bucket, performing a linear scan of the strings in the bucket. If the size of the string pool is known beforehand, the number of buckets in the hash table may be adjusted to optimize the tradeoff between many buckets (memory) and linear scanning (time taken to deduplicate).
+
+## Benchmarks
+
+The concrete numbers were established using the provided Performance project using BenchmarkDotNet (`Apple M1 Pro, 1 CPU, 10 logical and 10 physical cores, .NET SDK=7.0.100`).
+
+### Additions
+
+As with any hash table, the size of the table needs to be balanced against the number of items in the table.
+
+| Number of strings | Bits | Mean | Error | StdDev |
+|-|-|-|-|-|
+| 1000000 | 10 | **4,940.59 ns** | **98.802 ns** | **280.286 ns** |
+| 100000  | 12 |   **500.62 ns** | **10.979 ns** |  **31.852 ns** |
+| 10000   | 16 |   **115.20 ns** |  **1.086 ns** |   **0.962 ns** |
+| 1000000 | 10 | **1,832.62 ns** | **23.312 ns** |  **19.467 ns** |
+| 100000  | 12 |   **284.88 ns** | **11.838 ns** |  **34.904 ns** |
+| 10000   | 16 |    **88.69 ns** |  **0.592 ns** |   **0.494 ns** |
+| 1000000 | 10 |   **723.17 ns** | **14.368 ns** |  **31.538 ns** |
+| 100000  | 12 |   **173.79 ns** |  **8.715 ns** |  **25.559 ns** |
+| 10000   | 16 |    **65.21 ns** |  **1.326 ns** |   **2.491 ns** |
+
+### Hashes
+
+| String | Mean | Error | StdDev |
+|-|-|-|-|
+| `"Some ASCII string"` | **29.81 ns** | **0.334 ns** | **0.279 ns** |
+| `"Some ünicöde string"` | **47.58 ns** | **0.547 ns** | **0.457 ns** |
