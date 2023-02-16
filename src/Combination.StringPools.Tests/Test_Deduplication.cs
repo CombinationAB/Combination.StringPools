@@ -13,14 +13,14 @@ public class Test_Deduplication
         Assert.Equal(1024, pool.AllocatedBytes);
         for (var i = 0; i < numStrings; ++i)
         {
-            var someString = new string(Convert.ToChar('a' + (i % numUniqueStrings)), stringSize);
+            var someString = new string(Convert.ToChar('ä' + (i % numUniqueStrings)), stringSize);
             pool.Add(someString);
         }
 
-        Assert.Equal((stringSize + 2) * numUniqueStrings, pool.UsedBytes);
+        Assert.Equal(((stringSize * 2) + 2) * numUniqueStrings, pool.UsedBytes);
         for (var i = 0; i < numUniqueStrings * 2; ++i)
         {
-            var someString = new string(Convert.ToChar('a' + i), stringSize);
+            var someString = new string(Convert.ToChar('ä' + i), stringSize);
             if (i < numUniqueStrings)
             {
                 Assert.NotNull(pool.TryGet(someString));
@@ -28,6 +28,35 @@ public class Test_Deduplication
             else
             {
                 Assert.Null(pool.TryGet(someString));
+            }
+        }
+    }
+    [Theory]
+    [InlineData(10000, 10, 100)]
+    public void Equal_Strings_Deduplicated_Bytes(int numStrings, int numUniqueStrings, int stringSize)
+    {
+        using var pool = StringPool.DeduplicatedUtf8(1024, 1);
+        Assert.Equal(0, pool.UsedBytes);
+        Assert.Equal(1024, pool.AllocatedBytes);
+        for (var i = 0; i < numStrings; ++i)
+        {
+            var someString = new string(Convert.ToChar('ä' + (i % numUniqueStrings)), stringSize);
+            var bytes = Encoding.UTF8.GetBytes(someString);
+            pool.Add(bytes);
+        }
+
+        Assert.Equal(((stringSize * 2) + 2) * numUniqueStrings, pool.UsedBytes);
+        for (var i = 0; i < numUniqueStrings * 2; ++i)
+        {
+            var someString = new string(Convert.ToChar('ä' + i), stringSize);
+            var bytes = Encoding.UTF8.GetBytes(someString);
+            if (i < numUniqueStrings)
+            {
+                Assert.NotNull(pool.TryGet(bytes));
+            }
+            else
+            {
+                Assert.Null(pool.TryGet(bytes));
             }
         }
     }
