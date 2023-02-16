@@ -71,14 +71,35 @@ internal sealed class Utf8StringPool : IUtf8DeduplicatedStringPool
         }
     }
 
-    PooledUtf8String IUtf8StringPool.Add(string value)
+    PooledUtf8String IUtf8StringPool.Add(ReadOnlySpan<char> value)
     {
-        if (string.IsNullOrEmpty(value))
+        var utf8ByteCount = Encoding.UTF8.GetByteCount(value);
+        if (utf8ByteCount < 16384)
+        {
+            // Use the stack for small strings
+            Span<byte> utf8 = stackalloc byte[utf8ByteCount];
+            Encoding.UTF8.GetBytes(value, utf8);
+            return AddInternal(utf8);
+        }
+
+        var buffer = new byte[utf8ByteCount];
+        Encoding.UTF8.GetBytes(value, buffer);
+        return AddInternal(buffer);
+    }
+
+    PooledUtf8String IUtf8StringPool.Add(ReadOnlySpan<byte> value)
+        => AddInternal(value);
+
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+    private PooledUtf8String AddInternal(ReadOnlySpan<byte> value)
+    {
+        if (value.Length == 0)
         {
             return PooledUtf8String.Empty;
         }
 
-        var length = Encoding.UTF8.GetByteCount(value);
+        var length = value.Length;
         var structLength = length + 2;
         if (structLength > 0xffff || structLength > pageSize)
         {
@@ -95,7 +116,7 @@ internal sealed class Utf8StringPool : IUtf8DeduplicatedStringPool
         if (deduplicationTable is not null)
         {
             stringHash = unchecked((int)StringHash.Compute(value));
-            if (TryDeduplicate(stringHash, length, value, out var result))
+            if (TryDeduplicate(stringHash, value, out var result))
             {
                 return new PooledUtf8String(result);
             }
@@ -108,7 +129,7 @@ internal sealed class Utf8StringPool : IUtf8DeduplicatedStringPool
                 throw new ObjectDisposedException("String pool is already disposed");
             }
 
-            if (oldSize != usedBytes && TryDeduplicate(stringHash, length, value, out var result))
+            if (oldSize != usedBytes && TryDeduplicate(stringHash, value, out var result))
             {
                 return new PooledUtf8String(result);
             }
@@ -144,7 +165,7 @@ internal sealed class Utf8StringPool : IUtf8DeduplicatedStringPool
             {
                 *(ushort*)(writePtr + pageStartOffset) = checked((ushort)length);
                 var stringWritePtr = new Span<byte>((byte*)(writePtr + pageStartOffset + 2), length);
-                Encoding.UTF8.GetBytes(value, stringWritePtr);
+                value.CopyTo(stringWritePtr);
             }
 
             var handle = ((ulong)index << (64 - PoolIndexBits)) | (ulong)(writePosition - structLength);
@@ -161,22 +182,7 @@ internal sealed class Utf8StringPool : IUtf8DeduplicatedStringPool
 
             StringAdded?.Invoke(this, EventArgs.Empty);
 
-            var ret = new PooledUtf8String(handle);
-#if DEBUG
-            var rVal = ret.ToString();
-
-            if (usedBytes > pages.Count * pageSize)
-            {
-                throw new InvalidOperationException("Internal error: Pooled beyond allocation");
-            }
-
-            if (!rVal.Equals(value, StringComparison.Ordinal))
-            {
-                throw new InvalidOperationException($"Internal error: Incorrect string pooled: '{value}' != '{rVal}'");
-            }
-#endif
-
-            return ret;
+            return new PooledUtf8String(handle);
         }
     }
 
@@ -186,9 +192,29 @@ internal sealed class Utf8StringPool : IUtf8DeduplicatedStringPool
 
     long IStringPool.AllocatedBytes => pages.Count * pageSize;
 
-    PooledUtf8String? IUtf8DeduplicatedStringPool.TryGet(string value)
+    PooledUtf8String? IUtf8DeduplicatedStringPool.TryGet(ReadOnlySpan<char> value)
     {
-        if (string.IsNullOrEmpty(value))
+        var utf8ByteCount = Encoding.UTF8.GetByteCount(value);
+        if (utf8ByteCount < 16384)
+        {
+            // Use the stack for small strings
+            Span<byte> utf8 = stackalloc byte[utf8ByteCount];
+            Encoding.UTF8.GetBytes(value, utf8);
+            return TryGetInternal(utf8);
+        }
+
+        var buffer = new byte[utf8ByteCount];
+        Encoding.UTF8.GetBytes(value, buffer);
+        return TryGetInternal(buffer);
+    }
+
+    PooledUtf8String? IUtf8DeduplicatedStringPool.TryGet(ReadOnlySpan<byte> value)
+        => TryGetInternal(value);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+    private PooledUtf8String? TryGetInternal(ReadOnlySpan<byte> value)
+    {
+        if (value.Length == 0)
         {
             return PooledUtf8String.Empty;
         }
@@ -198,8 +224,7 @@ internal sealed class Utf8StringPool : IUtf8DeduplicatedStringPool
             throw new InvalidOperationException("Deduplication is not enabled for this pool");
         }
 
-        var length = Encoding.UTF8.GetByteCount(value);
-        if (!TryDeduplicate(unchecked((int)StringHash.Compute(value)), length, value, out var result))
+        if (!TryDeduplicate(unchecked((int)StringHash.Compute(value)), value, out var result))
         {
             return null;
         }
@@ -207,7 +232,7 @@ internal sealed class Utf8StringPool : IUtf8DeduplicatedStringPool
         return new PooledUtf8String(result);
     }
 
-    private bool TryDeduplicate(int stringHash, int utf8ByteCount, string value, out ulong offset)
+    private bool TryDeduplicate(int stringHash, ReadOnlySpan<byte> value, out ulong offset)
     {
         using (disposeLock.PreventDispose())
         {
@@ -225,15 +250,13 @@ internal sealed class Utf8StringPool : IUtf8DeduplicatedStringPool
                 return false;
             }
 
-            Span<byte> utf8 = stackalloc byte[utf8ByteCount];
-            Encoding.UTF8.GetBytes(value, utf8);
             var ct = table.Count;
             for (var i = 0; i < ct; ++i)
             {
                 var handle = table[i];
                 var poolOffset = handle & ((1UL << (64 - PoolIndexBits)) - 1);
                 var poolBytes = GetStringBytes(poolOffset);
-                if (poolBytes.Length != utf8ByteCount || !utf8.SequenceEqual(poolBytes))
+                if (poolBytes.Length != value.Length || !value.SequenceEqual(poolBytes))
                 {
                     continue;
                 }
