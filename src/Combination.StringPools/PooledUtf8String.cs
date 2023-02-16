@@ -1,6 +1,6 @@
 namespace Combination.StringPools;
 
-public readonly struct PooledUtf8String : IEquatable<PooledUtf8String>
+public readonly struct PooledUtf8String : IEquatable<PooledUtf8String>, IComparable<PooledUtf8String>
 {
     private readonly ulong handle;
 
@@ -31,6 +31,11 @@ public readonly struct PooledUtf8String : IEquatable<PooledUtf8String>
     public bool Equals(PooledUtf8String other)
     {
         return handle == other.handle || Utf8StringPool.StringsEqual(handle, other.handle);
+    }
+
+    public int CompareTo(PooledUtf8String other)
+    {
+        return Utf8StringPool.StringsCompare(handle, other.handle);
     }
 
     public override bool Equals(object? obj)

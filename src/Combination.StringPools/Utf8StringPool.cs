@@ -523,4 +523,66 @@ internal sealed class Utf8StringPool : IUtf8DeduplicatedStringPool
 
     public override string ToString() =>
         $"Utf8StringPool(bits={deduplicationTableBits}, dedup={deduplicationTable is not null}, pages={pages.Count}, used={usedBytes}, added={addedBytes})";
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+    public static int StringsCompare(ulong a, ulong b)
+    {
+        if (a == ulong.MaxValue)
+        {
+            return b == ulong.MaxValue ? 0 : -1;
+        }
+
+        if (b == ulong.MaxValue)
+        {
+            return 1;
+        }
+
+        var aPoolIndex = a >> (64 - PoolIndexBits);
+        var bPoolIndex = b >> (64 - PoolIndexBits);
+        if (aPoolIndex >= (ulong)Pools.Count)
+        {
+            throw new ArgumentException("Bad string pool offset", nameof(a));
+        }
+
+        if (bPoolIndex >= (ulong)Pools.Count)
+        {
+            throw new ArgumentException("Bad string pool offset", nameof(b));
+        }
+
+        var aOffset = a & ((1L << (64 - PoolIndexBits)) - 1);
+        var bOffset = b & ((1L << (64 - PoolIndexBits)) - 1);
+        var aPool = Pools[(int)aPoolIndex];
+        if (aPool is null)
+        {
+            throw new ObjectDisposedException("String pool is disposed");
+        }
+
+        if (aPoolIndex != bPoolIndex)
+        {
+            var bPool = Pools[(int)bPoolIndex];
+            if (bPool is null)
+            {
+                throw new ObjectDisposedException("String pool is disposed");
+            }
+
+            using (aPool.disposeLock.PreventDispose())
+            {
+                using (bPool.disposeLock.PreventDispose())
+                {
+                    return aPool.GetStringBytes(aOffset).SequenceCompareTo(bPool.GetStringBytes(bOffset));
+                }
+            }
+        }
+
+        if (aPool.deduplicationTable is not null && aOffset == bOffset)
+        {
+            // If the strings are in the same deduplicated pool, we can just compare the offsets
+            return 0;
+        }
+
+        using (aPool.disposeLock.PreventDispose())
+        {
+            return aPool.GetStringBytes(aOffset).SequenceCompareTo(aPool.GetStringBytes(bOffset));
+        }
+    }
 }
