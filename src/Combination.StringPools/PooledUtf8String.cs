@@ -4,14 +4,14 @@ public readonly struct PooledUtf8String : IEquatable<PooledUtf8String>, ICompara
 {
     private readonly ulong handle;
 
-    public static PooledUtf8String Empty => new(ulong.MaxValue);
+    public static PooledUtf8String Empty => default;
 
     internal PooledUtf8String(ulong handle)
     {
-        this.handle = handle;
+        this.handle = unchecked(handle + 1);
     }
 
-    public static implicit operator string(PooledUtf8String s) => Utf8StringPool.Get(s.handle);
+    public static implicit operator string(PooledUtf8String s) => Utf8StringPool.Get(unchecked(s.handle - 1));
 
     public static bool operator ==(PooledUtf8String a, PooledUtf8String b)
     {
@@ -30,12 +30,12 @@ public readonly struct PooledUtf8String : IEquatable<PooledUtf8String>, ICompara
 
     public bool Equals(PooledUtf8String other)
     {
-        return handle == other.handle || Utf8StringPool.StringsEqual(handle, other.handle);
+        return handle == other.handle || Utf8StringPool.StringsEqual(unchecked(handle - 1), unchecked(other.handle - 1));
     }
 
     public int CompareTo(PooledUtf8String other)
     {
-        return Utf8StringPool.StringsCompare(handle, other.handle);
+        return Utf8StringPool.StringsCompare(unchecked(handle - 1), unchecked(other.handle - 1));
     }
 
     public override bool Equals(object? obj)
@@ -44,15 +44,15 @@ public readonly struct PooledUtf8String : IEquatable<PooledUtf8String>, ICompara
     }
 
     public override int GetHashCode()
-        => unchecked((int)StringHash.Compute(Utf8StringPool.GetBytes(handle)));
+        => unchecked((int)StringHash.Compute(Utf8StringPool.GetBytes(unchecked(handle - 1))));
 
-    public override string ToString() => Utf8StringPool.Get(handle);
+    public override string ToString() => Utf8StringPool.Get(unchecked(handle - 1));
 
-    public int Length => Utf8StringPool.GetLength(handle);
+    public int Length => Utf8StringPool.GetLength(unchecked(handle - 1));
 
-    public IUtf8StringPool? StringPool => Utf8StringPool.GetStringPool(handle);
+    public IUtf8StringPool? StringPool => Utf8StringPool.GetStringPool(unchecked(handle - 1));
 
     public long Handle => unchecked((long)(handle ^ 0xaaaaaaaaaaaaaaaaUL));
 
-    public bool IsEmpty => handle == ulong.MaxValue;
+    public bool IsEmpty => handle == 0;
 }

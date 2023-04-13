@@ -3,6 +3,16 @@ namespace Combination.StringPools.Tests;
 public class Test_Allocation
 {
     [Fact]
+    public void Default_Is_Empty()
+    {
+        var string1 = PooledUtf8String.Empty;
+
+        PooledUtf8String string2 = default;
+        Assert.Equal(string1, string2);
+        Assert.Equal(0, string2.Length);
+    }
+
+    [Fact]
     public void Freed_On_Dispose()
     {
         var pool = StringPool.Utf8(4096, 1);
