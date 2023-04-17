@@ -6,11 +6,12 @@ public class Test_Deduplication
 {
     [Theory]
     [InlineData(10000, 10, 100)]
+    [InlineData(10000, 10, 9000)]
     public void Equal_Strings_Deduplicated(int numStrings, int numUniqueStrings, int stringSize)
     {
-        using var pool = StringPool.DeduplicatedUtf8(1024, 1);
+        using var pool = StringPool.DeduplicatedUtf8(stringSize < 1024 ? 1024 : 32768, 1);
         Assert.Equal(0, pool.UsedBytes);
-        Assert.Equal(1024, pool.AllocatedBytes);
+        Assert.Equal(stringSize < 1024 ? 1024 : 32768, pool.AllocatedBytes);
         for (var i = 0; i < numStrings; ++i)
         {
             var someString = new string(Convert.ToChar('ä' + (i % numUniqueStrings)), stringSize);
