@@ -8,4 +8,8 @@
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Standart.Hash.xxHash" Version="4.0.5" />
+  </ItemGroup>
+
 </Project>
