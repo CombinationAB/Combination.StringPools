@@ -198,7 +198,7 @@ public class Test_Allocation
     public void Add_Deduplicated_Thread_Safe(int numThreads, int numPages)
     {
         // ReSharper disable AccessToDisposedClosure
-        var pool = StringPool.DeduplicatedUtf8(4096, numPages);
+        using var pool = StringPool.DeduplicatedUtf8(4096, numPages);
         var threads = new List<Thread>();
         var numStarted = 0;
         var numDisposed = 0;
@@ -211,7 +211,7 @@ public class Test_Allocation
                 {
                     try
                     {
-                        for (var i = 0;; ++i)
+                        for (var i = 0;i < 100000; ++i)
                         {
                             var str = pool.Add("foobar " + ((seed + i) % 1000));
                             Interlocked.Add(ref stringSum, str.ToString().Length);
@@ -232,13 +232,12 @@ public class Test_Allocation
         }
 
         SpinWait.SpinUntil(() => numStarted == numThreads);
-        pool.Dispose();
 
         foreach (var t in threads)
         {
             t.Join();
         }
 
-        Assert.Equal(numThreads, numDisposed);
+        Assert.Equal(0, numDisposed);
     }
 }
