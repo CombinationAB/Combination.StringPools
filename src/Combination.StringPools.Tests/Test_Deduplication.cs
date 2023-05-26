@@ -18,7 +18,7 @@ public class Test_Deduplication
             pool.Add(someString);
         }
 
-        Assert.Equal(((stringSize * 2) + 2) * numUniqueStrings, pool.UsedBytes);
+        Assert.Equal(Utf8StringPool.GetAllocationSize(2 * stringSize)  * numUniqueStrings, pool.UsedBytes);
         for (var i = 0; i < numUniqueStrings * 2; ++i)
         {
             var someString = new string(Convert.ToChar('ä' + i), stringSize);
@@ -46,7 +46,7 @@ public class Test_Deduplication
             pool.Add(bytes);
         }
 
-        Assert.Equal(((stringSize * 2) + 2) * numUniqueStrings, pool.UsedBytes);
+        Assert.Equal(Utf8StringPool.GetAllocationSize(stringSize) * 2  * numUniqueStrings, pool.UsedBytes);
         for (var i = 0; i < numUniqueStrings * 2; ++i)
         {
             var someString = new string(Convert.ToChar('ä' + i), stringSize);
@@ -102,6 +102,6 @@ public class Test_Deduplication
             t.Join();
         }
 
-        Assert.Equal(10 * (2 + stringSize), pool.UsedBytes);
+        Assert.Equal(10 * Utf8StringPool.GetAllocationSize(stringSize), pool.UsedBytes);
     }
 }
