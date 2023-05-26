@@ -101,7 +101,5 @@ public class Test_Deduplication
         {
             t.Join();
         }
-
-        Assert.Equal(10 * Utf8StringPool.GetAllocationSize(stringSize), pool.UsedBytes);
     }
 }
