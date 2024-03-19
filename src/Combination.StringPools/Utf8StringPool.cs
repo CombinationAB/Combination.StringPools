@@ -1,4 +1,4 @@
-﻿using System.Runtime.CompilerServices;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 
@@ -153,7 +153,7 @@ internal sealed class Utf8StringPool : IUtf8DeduplicatedStringPool
             else
             {
                 ++currentPageIndex;
-                writePosition = (currentPageIndex * pageSize) + structLength;
+                writePosition = (currentPageIndex * (long)pageSize) + structLength;
                 didAlloc = EnsureCapacity(currentPageIndex + 1);
                 writePtr = pages[currentPageIndex];
                 pageStartOffset = 0;
