@@ -562,6 +562,7 @@ internal sealed class Utf8StringPool : IUtf8DeduplicatedStringPool
         AllocationChanged?.Invoke(null, EventArgs.Empty);
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
     internal static bool StringsEqual(ulong a, ulong b)
     {
         return StringsCompare(a, b) == 0;
