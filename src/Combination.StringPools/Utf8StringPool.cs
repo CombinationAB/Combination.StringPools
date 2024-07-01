@@ -108,7 +108,7 @@ internal sealed class Utf8StringPool : IUtf8DeduplicatedStringPool
 
         var stringHash = 0;
         var didAlloc = false;
-        var oldSize = usedBytes;
+        var oldSize = Interlocked.Read(ref usedBytes);
 
         Interlocked.Add(ref totalAddedBytes, structLength);
         Interlocked.Add(ref addedBytes, structLength);
@@ -129,7 +129,7 @@ internal sealed class Utf8StringPool : IUtf8DeduplicatedStringPool
                 throw new ObjectDisposedException("String pool is already disposed");
             }
 
-            if (oldSize != usedBytes && TryDeduplicate(stringHash, value, out var result))
+            if (oldSize != Interlocked.Read(ref usedBytes) && TryDeduplicate(stringHash, value, out var result))
             {
                 return new PooledUtf8String(result);
             }
