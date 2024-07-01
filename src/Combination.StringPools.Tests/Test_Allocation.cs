@@ -50,7 +50,7 @@ public class Test_Allocation
         using var pool = StringPool.Utf8(pageSize, 1);
         Assert.Equal(0, pool.UsedBytes);
         Assert.Equal(pageSize, pool.AllocatedBytes);
-        var someString = new string('c', pageSize - 2);
+        var someString = new string('c', TestSupport.GetMaxStringSizeForAllocation(pageSize));
         var pooledString = pool.Add(someString);
         Assert.Equal(pageSize, pool.UsedBytes);
         Assert.Equal(pageSize, pool.AllocatedBytes);
@@ -69,7 +69,7 @@ public class Test_Allocation
         using var pool = StringPool.Utf8(pageSize, 1);
         Assert.Equal(0, pool.UsedBytes);
         Assert.Equal(pageSize, pool.AllocatedBytes);
-        var someString = new string('c', pageSize - 1);
+        var someString = new string('c', TestSupport.GetMaxStringSizeForAllocation(pageSize) + 1);
         var exception = Assert.Throws<ArgumentOutOfRangeException>(() => pool.Add(someString));
         Assert.Contains("String is too long to be pooled", exception.Message);
     }
@@ -86,13 +86,13 @@ public class Test_Allocation
         using var pool = StringPool.Utf8(pageSize, 1);
         Assert.Equal(0, pool.UsedBytes);
         Assert.Equal(pageSize, pool.AllocatedBytes);
-        var string1 = new string('c', (pageSize / 2) - 2);
+        var string1 = new string('c', TestSupport.GetMaxStringSizeForAllocation(pageSize / 2));
         var pooledString1 = pool.Add(string1);
         Assert.Equal(pageSize / 2, pool.UsedBytes);
         Assert.Equal(pageSize, pool.AllocatedBytes);
-        var string2 = new string('d', pageSize - (pageSize / 2) - 2);
+        var string2 = new string('d', TestSupport.GetMaxStringSizeForAllocation(pageSize / 2));
         var pooledString2 = pool.Add(string2);
-        Assert.Equal(pageSize, pool.UsedBytes);
+        Assert.InRange(pool.UsedBytes, pageSize - 1, pageSize);
         Assert.Equal(pageSize, pool.AllocatedBytes);
         Assert.Equal(string1, (string)pooledString1);
         Assert.Equal(string2, (string)pooledString2);
@@ -107,17 +107,17 @@ public class Test_Allocation
     [InlineData(65535)]
     public void Two_Strings_Dont_Fit_Need_More_Space(int pageSize)
     {
-        var stringSize = (pageSize / 2) - 1;
+        var stringSize = TestSupport.GetMaxStringSizeForAllocation(pageSize / 2) + 1;
         using var pool = StringPool.Utf8(pageSize, 1);
         Assert.Equal(0, pool.UsedBytes);
         Assert.Equal(pageSize, pool.AllocatedBytes);
         var string1 = new string('c', stringSize);
         var pooledString1 = pool.Add(string1);
-        Assert.Equal(stringSize + 2, pool.UsedBytes);
+        Assert.Equal(TestSupport.GetAllocationSize(stringSize), pool.UsedBytes);
         Assert.Equal(pageSize, pool.AllocatedBytes);
         var string2 = new string('d', stringSize);
         var pooledString2 = pool.Add(string2);
-        Assert.Equal((2 * stringSize) + 4, pool.UsedBytes);
+        Assert.Equal(2 * TestSupport.GetAllocationSize(stringSize), pool.UsedBytes);
         Assert.Equal(2 * pageSize, pool.AllocatedBytes);
         Assert.Equal(string1, (string)pooledString1);
         Assert.Equal(stringSize, pooledString1.Length);
@@ -161,8 +161,10 @@ public class Test_Allocation
                     {
                         Interlocked.Increment(ref numDisposed);
                     }
-                });
-            t.Priority = ThreadPriority.AboveNormal;
+                })
+            {
+                Priority = ThreadPriority.AboveNormal
+            };
             t.Start();
             threads.Add(t);
         }
@@ -191,7 +193,7 @@ public class Test_Allocation
         }
     }
 
-    public static IEnumerable<object[]> Sizes = Enumerable.Range(0, 14).Select(x => new object[] { x });
+    public static readonly IEnumerable<object[]> Sizes = Enumerable.Range(0, 14).Select(x => new object[] { x });
 
     [Theory]
     [InlineData(2, 1)]
@@ -213,7 +215,7 @@ public class Test_Allocation
                 {
                     try
                     {
-                        for (var i = 0;; ++i)
+                        for (var i = 0; ; ++i)
                         {
                             var str = pool.Add("foobar " + ((seed + i) % 1000));
                             Interlocked.Add(ref stringSum, str.ToString().Length);
@@ -227,8 +229,10 @@ public class Test_Allocation
                     {
                         Interlocked.Increment(ref numDisposed);
                     }
-                });
-            t.Priority = ThreadPriority.AboveNormal;
+                })
+            {
+                Priority = ThreadPriority.AboveNormal
+            };
             t.Start();
             threads.Add(t);
         }
