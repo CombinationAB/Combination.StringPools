@@ -9,14 +9,6 @@ namespace Combination.StringPools;
 /// </summary>
 public static class StringHash
 {
-    /// <summary>
-    /// Computes the XxHash3 hash of the given character range.
-    /// </summary>
-    /// <param name="span">The range of characters</param>
-    /// <returns>The hash value</returns>
-    public static ulong Compute(ReadOnlySpan<char> span)
-        => Compute(Encoding.UTF8.GetBytes(span.ToArray()));
-
     /// Computes the XxHash3 hash of the given character range.
     /// </summary>
     /// <param name="span">The range of characters</param>
