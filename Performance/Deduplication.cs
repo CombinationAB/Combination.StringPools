@@ -4,6 +4,7 @@ using Combination.StringPools;
 
 namespace Performance;
 
+#pragma warning disable IDE1006 // Naming Styles
 #pragma warning disable CS8618
 public class Deduplication
 {
