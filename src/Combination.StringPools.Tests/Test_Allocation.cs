@@ -259,7 +259,6 @@ public class Test_Allocation
         var numStopped = 0;
         var stringSum = 0;
         var stopped = false;
-        var o = new object();
         for (var ti = 0; ti < numThreads; ++ti)
         {
             var t = new Thread(
