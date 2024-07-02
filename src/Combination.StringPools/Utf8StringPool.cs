@@ -159,8 +159,6 @@ internal sealed class Utf8StringPool : IUtf8DeduplicatedStringPool
                 pageStartOffset = 0;
             }
 
-            Interlocked.Add(ref totalUsedBytes, structLength);
-            Interlocked.Add(ref usedBytes, structLength);
             unsafe
             {
                 *(ushort*)(writePtr + pageStartOffset) = checked((ushort)length);
@@ -174,6 +172,8 @@ internal sealed class Utf8StringPool : IUtf8DeduplicatedStringPool
             {
                 AddToDeduplicationTable(stringHash, handle);
             }
+            Interlocked.Add(ref totalUsedBytes, structLength);
+            Interlocked.Add(ref usedBytes, structLength);
 
             if (didAlloc)
             {
