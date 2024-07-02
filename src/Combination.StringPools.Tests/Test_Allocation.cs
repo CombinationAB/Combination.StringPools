@@ -161,8 +161,10 @@ public class Test_Allocation
                     {
                         Interlocked.Increment(ref numDisposed);
                     }
-                });
-            t.Priority = ThreadPriority.AboveNormal;
+                })
+            {
+                Priority = ThreadPriority.AboveNormal
+            };
             t.Start();
             threads.Add(t);
         }
@@ -191,7 +193,7 @@ public class Test_Allocation
         }
     }
 
-    public static IEnumerable<object[]> Sizes = Enumerable.Range(0, 14).Select(x => new object[] { x });
+    public static readonly IEnumerable<object[]> Sizes = Enumerable.Range(0, 14).Select(x => new object[] { x });
 
     [Theory]
     [InlineData(2, 1)]
@@ -226,8 +228,10 @@ public class Test_Allocation
                     {
                         Interlocked.Increment(ref numDisposed);
                     }
-                });
-            t.Priority = ThreadPriority.AboveNormal;
+                })
+            {
+                Priority = ThreadPriority.AboveNormal
+            };
             t.Start();
             threads.Add(t);
         }
@@ -280,8 +284,10 @@ public class Test_Allocation
                     {
                         Interlocked.Increment(ref numStopped);
                     }
-                });
-            t.Priority = ThreadPriority.AboveNormal;
+                })
+            {
+                Priority = ThreadPriority.AboveNormal
+            };
             t.Start();
             threads.Add(t);
         }
