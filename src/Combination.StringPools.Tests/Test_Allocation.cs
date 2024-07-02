@@ -269,14 +269,11 @@ public class Test_Allocation
                     {
                         for (var i = 0; !stopped; ++i)
                         {
-                            //lock (o)
+                            var str = pool.Add("foobar " + (i % 1000));
+                            Interlocked.Add(ref stringSum, 2 + str.ToString().Length);
+                            if (i == 10000)
                             {
-                                var str = pool.Add("foobar " + (i % 1000));
-                                Interlocked.Add(ref stringSum, 2 + str.ToString().Length);
-                                if (i == 10000)
-                                {
-                                    Interlocked.Increment(ref numStarted);
-                                }
+                                Interlocked.Increment(ref numStarted);
                             }
                         }
                     }
