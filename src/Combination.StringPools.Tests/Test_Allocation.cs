@@ -161,8 +161,10 @@ public class Test_Allocation
                     {
                         Interlocked.Increment(ref numDisposed);
                     }
-                });
-            t.Priority = ThreadPriority.AboveNormal;
+                })
+            {
+                Priority = ThreadPriority.AboveNormal
+            };
             t.Start();
             threads.Add(t);
         }
@@ -191,7 +193,7 @@ public class Test_Allocation
         }
     }
 
-    public static IEnumerable<object[]> Sizes = Enumerable.Range(0, 14).Select(x => new object[] { x });
+    public static readonly TheoryData<int> Sizes = new(Enumerable.Range(0, 14));
 
     [Theory]
     [InlineData(2, 1)]
@@ -213,7 +215,7 @@ public class Test_Allocation
                 {
                     try
                     {
-                        for (var i = 0;; ++i)
+                        for (var i = 0; ; ++i)
                         {
                             var str = pool.Add("foobar " + ((seed + i) % 1000));
                             Interlocked.Add(ref stringSum, str.ToString().Length);
@@ -227,8 +229,10 @@ public class Test_Allocation
                     {
                         Interlocked.Increment(ref numDisposed);
                     }
-                });
-            t.Priority = ThreadPriority.AboveNormal;
+                })
+            {
+                Priority = ThreadPriority.AboveNormal
+            };
             t.Start();
             threads.Add(t);
         }
