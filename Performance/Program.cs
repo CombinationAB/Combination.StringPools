@@ -1,7 +1,4 @@
-﻿using System.Diagnostics;
-using System.Globalization;
-using BenchmarkDotNet.Running;
-using Combination.StringPools;
+﻿using BenchmarkDotNet.Running;
 using Performance;
 
 //var summary = BenchmarkRunner.Run<Deduplication>();
