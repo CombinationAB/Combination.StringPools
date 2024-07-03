@@ -311,8 +311,7 @@ internal sealed class Utf8StringPool : IUtf8DeduplicatedStringPool
             throw new ArgumentException("Bad string pool offset", nameof(handle));
         }
 
-        var pool = Pools[(int)poolIndex]
-            ?? throw new ObjectDisposedException("String pool is disposed");
+        var pool = Pools[(int)poolIndex] ?? throw new ObjectDisposedException("String pool is disposed");
 
         return pool.GetFromPool(handle);
     }
@@ -367,8 +366,7 @@ internal sealed class Utf8StringPool : IUtf8DeduplicatedStringPool
             throw new ArgumentException("Bad string pool offset", nameof(handle));
         }
 
-        var pool = Pools[(int)poolIndex]
-            ?? throw new ObjectDisposedException("String pool is disposed");
+        var pool = Pools[(int)poolIndex] ?? throw new ObjectDisposedException("String pool is disposed");
 
         return pool.GetStringLength(handle & ((1L << (64 - PoolIndexBits)) - 1));
     }
@@ -500,13 +498,11 @@ internal sealed class Utf8StringPool : IUtf8DeduplicatedStringPool
 
         var aOffset = a & ((1L << (64 - PoolIndexBits)) - 1);
         var bOffset = b & ((1L << (64 - PoolIndexBits)) - 1);
-        var aPool = Pools[(int)aPoolIndex]
-            ?? throw new ObjectDisposedException("String pool is disposed");
+        var aPool = Pools[(int)aPoolIndex] ?? throw new ObjectDisposedException("String pool is disposed");
 
         if (aPoolIndex != bPoolIndex)
         {
-            var bPool = Pools[(int)bPoolIndex]
-                ?? throw new ObjectDisposedException("String pool is disposed");
+            var bPool = Pools[(int)bPoolIndex] ?? throw new ObjectDisposedException("String pool is disposed");
 
             using (aPool.disposeLock.PreventDispose())
             {

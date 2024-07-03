@@ -193,7 +193,7 @@ public class Test_Allocation
         }
     }
 
-    public static readonly IEnumerable<object[]> Sizes = Enumerable.Range(0, 14).Select(x => new object[] { x });
+    public static readonly TheoryData<int> Sizes = new(Enumerable.Range(0, 14));
 
     [Theory]
     [InlineData(2, 1)]
