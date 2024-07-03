@@ -269,7 +269,7 @@ public class Test_Allocation
                         for (var i = 0; !stopped; ++i)
                         {
                             var str = pool.Add("foobar " + (i % 1000));
-                            Interlocked.Add(ref stringSum, 2 + str.ToString().Length);
+                            Interlocked.Add(ref stringSum, TestSupport.GetAllocationSize(str.ToString().Length));
                             if (i == 10000)
                             {
                                 Interlocked.Increment(ref numStarted);
