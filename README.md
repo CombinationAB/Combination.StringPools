@@ -59,17 +59,17 @@ The deduplication works by hashing the string and then in the associated bucket,
 
 ## Benchmarks
 
-The concrete numbers were established using the provided Performance project using BenchmarkDotNet (`Apple M1 Pro, 1 CPU, 10 logical and 10 physical cores, .NET SDK=7.0.100`).
+The concrete numbers were established using the provided Performance project using BenchmarkDotNet (`Apple M1 Pro, 1 CPU, 10 logical and 10 physical cores, .NET 8.0.2 (8.0.224.6711), Arm64 RyuJIT AdvSIMD`).
 
 ### Additions
 
 As with any hash table, the size of the table needs to be balanced against the number of items in the table.
 
 | Number of strings | Mean | Error | StdDev |
-|-|-|-|-|-|
-| 1000000 | 10 | **437.56 ns** | **8.702 ns**  | **280.286 ns** |
-| 100000  | 12 | **500.62 ns** | **10.979 ns** | **15.912 ns**  |
-| 10000   | 16 | **105.96 ns** |  **2.142 ns** | **3.917 ns**   |
+|-|-:|-:|-:|
+| 1000000 | **437.56 ns** | **8.702 ns**  | **280.286 ns** |
+| 100000  | **500.62 ns** | **10.979 ns** | **15.912 ns**  |
+| 10000   | **105.96 ns** |  **2.142 ns** | **3.917 ns**   |
 
 ### Hashes
 
