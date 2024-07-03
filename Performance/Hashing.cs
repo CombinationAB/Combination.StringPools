@@ -7,7 +7,7 @@ namespace Performance;
 #pragma warning disable IDE1006 // Naming Styles
 public class Hashing
 {
-    private static readonly IUtf8DeduplicatedStringPool pool = StringPool.DeduplicatedUtf8(4096, 1, 12);
+    private static readonly IUtf8DeduplicatedStringPool pool = StringPool.DeduplicatedUtf8(4096, 1);
 
     [ParamsSource(nameof(CreateStrings))]
     public PooledUtf8String String;

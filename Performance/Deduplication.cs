@@ -28,7 +28,7 @@ public class Deduplication
     }
 
     public IEnumerable<IUtf8DeduplicatedStringPool> CreatePools()
-        => (new[] { 10, 12, 16 }).Select(bits => StringPool.DeduplicatedUtf8(4096, 1, bits));
+        => [StringPool.DeduplicatedUtf8(4096, 1)];
 
     internal static string RandomString()
     {
