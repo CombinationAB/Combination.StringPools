@@ -13,7 +13,12 @@ internal sealed class Utf8StringPool : IUtf8DeduplicatedStringPool
             24; // Number of bits to use for pool index in handle (more bits = more pools, but less strings per pool)
 
     private static readonly List<Utf8StringPool?> Pools = new();
-    internal static long totalAllocatedBytes, totalUsedBytes, totalAddedBytes;
+
+#pragma warning disable IDE1006 // Naming Styles
+    internal static long totalAllocatedBytes;
+    internal static long totalUsedBytes;
+    internal static long totalAddedBytes;
+#pragma warning restore IDE1006 // Naming Styles
 
     private readonly List<nint> pages = new();
     private readonly int index;
@@ -108,7 +113,7 @@ internal sealed class Utf8StringPool : IUtf8DeduplicatedStringPool
 
         var stringHash = 0;
         var didAlloc = false;
-        var oldSize = usedBytes;
+        var oldSize = Interlocked.Read(ref usedBytes);
 
         Interlocked.Add(ref totalAddedBytes, structLength);
         Interlocked.Add(ref addedBytes, structLength);
@@ -129,7 +134,7 @@ internal sealed class Utf8StringPool : IUtf8DeduplicatedStringPool
                 throw new ObjectDisposedException("String pool is already disposed");
             }
 
-            if (oldSize != usedBytes && TryDeduplicate(stringHash, value, out var result))
+            if (oldSize != Interlocked.Read(ref usedBytes) && TryDeduplicate(stringHash, value, out var result))
             {
                 return new PooledUtf8String(result);
             }
@@ -159,8 +164,6 @@ internal sealed class Utf8StringPool : IUtf8DeduplicatedStringPool
                 pageStartOffset = 0;
             }
 
-            Interlocked.Add(ref totalUsedBytes, structLength);
-            Interlocked.Add(ref usedBytes, structLength);
             unsafe
             {
                 *(ushort*)(writePtr + pageStartOffset) = checked((ushort)length);
@@ -174,6 +177,8 @@ internal sealed class Utf8StringPool : IUtf8DeduplicatedStringPool
             {
                 AddToDeduplicationTable(stringHash, handle);
             }
+            Interlocked.Add(ref totalUsedBytes, structLength);
+            Interlocked.Add(ref usedBytes, structLength);
 
             if (didAlloc)
             {
@@ -306,11 +311,8 @@ internal sealed class Utf8StringPool : IUtf8DeduplicatedStringPool
             throw new ArgumentException("Bad string pool offset", nameof(handle));
         }
 
-        var pool = Pools[(int)poolIndex];
-        if (pool is null)
-        {
-            throw new ObjectDisposedException("String pool is disposed");
-        }
+        var pool = Pools[(int)poolIndex]
+            ?? throw new ObjectDisposedException("String pool is disposed");
 
         return pool.GetFromPool(handle);
     }
@@ -365,11 +367,8 @@ internal sealed class Utf8StringPool : IUtf8DeduplicatedStringPool
             throw new ArgumentException("Bad string pool offset", nameof(handle));
         }
 
-        var pool = Pools[(int)poolIndex];
-        if (pool is null)
-        {
-            throw new ObjectDisposedException("String pool is disposed");
-        }
+        var pool = Pools[(int)poolIndex]
+            ?? throw new ObjectDisposedException("String pool is disposed");
 
         return pool.GetStringLength(handle & ((1L << (64 - PoolIndexBits)) - 1));
     }
@@ -501,19 +500,13 @@ internal sealed class Utf8StringPool : IUtf8DeduplicatedStringPool
 
         var aOffset = a & ((1L << (64 - PoolIndexBits)) - 1);
         var bOffset = b & ((1L << (64 - PoolIndexBits)) - 1);
-        var aPool = Pools[(int)aPoolIndex];
-        if (aPool is null)
-        {
-            throw new ObjectDisposedException("String pool is disposed");
-        }
+        var aPool = Pools[(int)aPoolIndex]
+            ?? throw new ObjectDisposedException("String pool is disposed");
 
         if (aPoolIndex != bPoolIndex)
         {
-            var bPool = Pools[(int)bPoolIndex];
-            if (bPool is null)
-            {
-                throw new ObjectDisposedException("String pool is disposed");
-            }
+            var bPool = Pools[(int)bPoolIndex]
+                ?? throw new ObjectDisposedException("String pool is disposed");
 
             using (aPool.disposeLock.PreventDispose())
             {
