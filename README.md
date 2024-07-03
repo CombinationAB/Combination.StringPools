@@ -67,9 +67,9 @@ As with any hash table, the size of the table needs to be balanced against the n
 
 | Number of strings | Mean | Error | StdDev |
 |-|-:|-:|-:|
-| 1000000 | **437.56 ns** | **8.702 ns**  | **280.286 ns** |
-| 100000  | **500.62 ns** | **10.979 ns** | **15.912 ns**  |
-| 10000   | **105.96 ns** |  **2.142 ns** | **3.917 ns**   |
+| 1000000 | **437.56 ns** | **8.702 ns**  | **15.912 ns** |
+| 100000  | **105.96 ns** | **2.142 ns** | **3.917 ns**  |
+| 10000   | **74.33 ns** |  **0.998 ns** | **0.833 ns**   |
 
 ### Hashes
 
