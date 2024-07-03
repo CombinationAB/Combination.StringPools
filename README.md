@@ -65,21 +65,15 @@ The concrete numbers were established using the provided Performance project usi
 
 As with any hash table, the size of the table needs to be balanced against the number of items in the table.
 
-| Number of strings | Bits | Mean | Error | StdDev |
+| Number of strings | Mean | Error | StdDev |
 |-|-|-|-|-|
-| 1000000 | 10 | **4,940.59 ns** | **98.802 ns** | **280.286 ns** |
-| 100000  | 12 |   **500.62 ns** | **10.979 ns** |  **31.852 ns** |
-| 10000   | 16 |   **115.20 ns** |  **1.086 ns** |   **0.962 ns** |
-| 1000000 | 10 | **1,832.62 ns** | **23.312 ns** |  **19.467 ns** |
-| 100000  | 12 |   **284.88 ns** | **11.838 ns** |  **34.904 ns** |
-| 10000   | 16 |    **88.69 ns** |  **0.592 ns** |   **0.494 ns** |
-| 1000000 | 10 |   **723.17 ns** | **14.368 ns** |  **31.538 ns** |
-| 100000  | 12 |   **173.79 ns** |  **8.715 ns** |  **25.559 ns** |
-| 10000   | 16 |    **65.21 ns** |  **1.326 ns** |   **2.491 ns** |
+| 1000000 | 10 | **437.56 ns** | **8.702 ns**  | **280.286 ns** |
+| 100000  | 12 | **500.62 ns** | **10.979 ns** | **15.912 ns**  |
+| 10000   | 16 | **105.96 ns** |  **2.142 ns** | **3.917 ns**   |
 
 ### Hashes
 
-| String | Mean | Error | StdDev |
-|-|-|-|-|
-| `"Some ASCII string"` | **29.81 ns** | **0.334 ns** | **0.279 ns** |
-| `"Some ünicöde string"` | **47.58 ns** | **0.547 ns** | **0.457 ns** |
+| String              | Mean     | Error    | StdDev   |
+|-------------------- |---------:|---------:|---------:|
+| Some ASCII string   | 13.35 ns | 0.252 ns | 0.377 ns |
+| Some ünicöde string | 13.22 ns | 0.139 ns | 0.148 ns |
