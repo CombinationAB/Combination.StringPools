@@ -1,3 +1,4 @@
+using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -97,6 +98,9 @@ internal sealed class Utf8StringPool : IUtf8DeduplicatedStringPool
     PooledUtf8String IUtf8StringPool.Add(ReadOnlySpan<byte> value)
         => AddInternal(value);
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+    public static int GetAllocationSize(int length) => length + 1 + (BitOperations.Log2((uint)length) / 7);
+
 
     [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
     private PooledUtf8String AddInternal(ReadOnlySpan<byte> value)
@@ -107,8 +111,8 @@ internal sealed class Utf8StringPool : IUtf8DeduplicatedStringPool
             return PooledUtf8String.Empty;
         }
 
-        var structLength = length + 2;
-        if (structLength > 0xffff || structLength > pageSize)
+        var structLength = GetAllocationSize(length);
+        if (structLength > pageSize)
         {
             throw new ArgumentOutOfRangeException(nameof(value), "String is too long to be pooled");
         }
@@ -168,8 +172,24 @@ internal sealed class Utf8StringPool : IUtf8DeduplicatedStringPool
 
             unsafe
             {
-                *(ushort*)(writePtr + pageStartOffset) = checked((ushort)length);
-                var stringWritePtr = new Span<byte>((byte*)(writePtr + pageStartOffset + 2), length);
+                var ptr = (byte*)(writePtr + pageStartOffset);
+                var write = length;
+                while (true)
+                {
+                    if (write > 0x7f)
+                    {
+                        *ptr++ = unchecked((byte)(0x80 | (write & 0x7f)));
+                    }
+                    else
+                    {
+                        *ptr++ = unchecked((byte)write);
+                        break;
+                    }
+
+                    write >>= 7;
+                }
+
+                var stringWritePtr = new Span<byte>(ptr, length);
                 value.CopyTo(stringWritePtr);
             }
 
@@ -388,8 +408,21 @@ internal sealed class Utf8StringPool : IUtf8DeduplicatedStringPool
 
         unsafe
         {
-            var length = ((ushort*)(pages[page] + pageOffset))[0];
-            return new ReadOnlySpan<byte>((byte*)(pages[page] + pageOffset + 2), length);
+            var ptr = (byte*)(pages[page] + pageOffset);
+            var length = 0;
+            var shl = 0;
+            while (true)
+            {
+                var t = *ptr++;
+                length += (t & 0x7f) << shl;
+                shl += 7;
+                if ((t & 0x80) == 0)
+                {
+                    break;
+                }
+            }
+
+            return new ReadOnlySpan<byte>(ptr, length);
         }
     }
 
@@ -434,7 +467,24 @@ internal sealed class Utf8StringPool : IUtf8DeduplicatedStringPool
                 throw new ArgumentOutOfRangeException(nameof(offset), $"Invalid handle value, page {page} is out of range 0..{pages.Count}");
             }
 
-            return unchecked((ushort)Marshal.ReadInt16(pages[page] + pageOffset));
+            unsafe
+            {
+                var ptr = (byte*)(pages[page] + pageOffset);
+                var length = 0;
+                var shl = 0;
+                while (true)
+                {
+                    var t = *ptr++;
+                    length += (t & 0x7f) << shl;
+                    shl += 7;
+                    if ((t & 0x80) == 0)
+                    {
+                        break;
+                    }
+                }
+
+                return length;
+            }
         }
     }
 

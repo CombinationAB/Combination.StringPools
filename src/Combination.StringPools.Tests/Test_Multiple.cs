@@ -69,7 +69,7 @@ public class Test_Multiple
 
         foreach (var pool in pools)
         {
-            Assert.Equal((stringSize + 2) * stringsPerPool, pool.UsedBytes);
+            Assert.Equal(TestSupport.GetAllocationSize(stringSize) * stringsPerPool, pool.UsedBytes);
             pool.Dispose();
             Assert.Equal(0, pool.UsedBytes);
         }
@@ -94,7 +94,7 @@ public class Test_Multiple
                         Assert.Same(pool, str.StringPool);
                     }
 
-                    Assert.Equal(stringsPerPool * (2 + stringSize), pool.UsedBytes);
+                    Assert.Equal(stringsPerPool * TestSupport.GetAllocationSize(stringSize), pool.UsedBytes);
                 });
             t.Start();
             threads.Add(t);
@@ -125,7 +125,7 @@ public class Test_Multiple
                         Assert.Same(pool, str.StringPool);
                     }
 
-                    Assert.Equal(10 * (2 + stringSize), pool.UsedBytes);
+                    Assert.Equal(10 * TestSupport.GetAllocationSize(stringSize), pool.UsedBytes);
                 });
             t.Start();
             threads.Add(t);
