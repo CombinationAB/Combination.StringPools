@@ -199,14 +199,13 @@ public class Test_Allocation
     [InlineData(2, 1)]
     [InlineData(16, 1)]
     [InlineData(16, 2)]
-    public void Add_Deduplicated_Thread_Safe(int numThreads, int numPages)
+    public void Add_Deduplicated_Dispose_Thread_Safe(int numThreads, int numPages)
     {
         // ReSharper disable AccessToDisposedClosure
         var pool = StringPool.DeduplicatedUtf8(4096, numPages);
         var threads = new List<Thread>();
         var numStarted = 0;
         var numDisposed = 0;
-        var stringSum = 0;
         for (var ti = 0; ti < numThreads; ++ti)
         {
             var seed = ti;
@@ -218,7 +217,7 @@ public class Test_Allocation
                         for (var i = 0; ; ++i)
                         {
                             var str = pool.Add("foobar " + ((seed + i) % 1000));
-                            Interlocked.Add(ref stringSum, str.ToString().Length);
+                            ;
                             if (i == 10000)
                             {
                                 Interlocked.Increment(ref numStarted);
@@ -244,7 +243,67 @@ public class Test_Allocation
         {
             t.Join();
         }
-
         Assert.Equal(numThreads, numDisposed);
+    }
+
+    [Theory]
+    [InlineData(2, 1)]
+    [InlineData(16, 1)]
+    [InlineData(16, 2)]
+    public void Add_Deduplicated_Thread_Safe(int numThreads, int numPages)
+    {
+        // ReSharper disable AccessToDisposedClosure
+        using var pool = StringPool.DeduplicatedUtf8(4096, numPages);
+        var threads = new List<Thread>();
+        var numStarted = 0;
+        var numStopped = 0;
+        var stringSum = 0;
+        var stopped = false;
+        for (var ti = 0; ti < numThreads; ++ti)
+        {
+            var t = new Thread(
+                () =>
+                {
+                    try
+                    {
+                        for (var i = 0; !stopped; ++i)
+                        {
+                            var str = pool.Add("foobar " + (i % 1000));
+                            Interlocked.Add(ref stringSum, 2 + str.ToString().Length);
+                            if (i == 10000)
+                            {
+                                Interlocked.Increment(ref numStarted);
+                            }
+                        }
+                    }
+                    finally
+                    {
+                        Interlocked.Increment(ref numStopped);
+                    }
+                })
+            {
+                Priority = ThreadPriority.AboveNormal
+            };
+            t.Start();
+            threads.Add(t);
+        }
+
+        SpinWait.SpinUntil(() => numStarted == numThreads);
+        stopped = true;
+        foreach (var t in threads)
+        {
+            t.Join();
+        }
+        Assert.Equal(numStopped, numStarted);
+        Assert.Equal(stringSum, pool.AddedBytes);
+        var used = pool.UsedBytes;
+        var sum = 0L;
+        for (var i = 0; i < 1000; ++i)
+        {
+            var len = 2 + ("foobar " + i).Length;
+            sum += len;
+        }
+
+        Assert.Equal(sum, used);
     }
 }
