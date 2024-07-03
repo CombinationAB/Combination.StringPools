@@ -21,13 +21,15 @@ internal sealed class Utf8StringPool : IUtf8DeduplicatedStringPool
     internal static long totalAddedBytes;
 #pragma warning restore IDE1006 // Naming Styles
 
+    internal int overfillCount;
+
     private readonly List<nint> pages = new();
     private readonly int index;
     private long writePosition, usedBytes, addedBytes;
 
-    private readonly List<ulong>?[]? deduplicationTable;
+    private ulong[]? deduplicationTable;
     private readonly DisposeLock disposeLock = new();
-    private readonly int deduplicationTableBits; // Number of bits to use for deduplication table (2^bits entries)
+    private int deduplicationTableBits; // Number of bits to use for deduplication table (2^bits entries)
     private readonly int pageSize;
 
     private readonly object writeLock = new();
@@ -55,7 +57,7 @@ internal sealed class Utf8StringPool : IUtf8DeduplicatedStringPool
         this.pageSize = pageSize;
         if (deduplicateStrings)
         {
-            deduplicationTable = new List<ulong>?[1 << deduplicationTableBits];
+            deduplicationTable = new ulong[(1 << deduplicationTableBits)];
         }
 
         bool didAlloc;
@@ -195,7 +197,7 @@ internal sealed class Utf8StringPool : IUtf8DeduplicatedStringPool
 
             if (deduplicationTable is not null)
             {
-                AddToDeduplicationTable(stringHash, handle);
+                AddToDeduplicationTable(deduplicationTable, deduplicationTableBits, stringHash, handle);
             }
             Interlocked.Add(ref totalUsedBytes, structLength);
             Interlocked.Add(ref usedBytes, structLength);
@@ -267,45 +269,83 @@ internal sealed class Utf8StringPool : IUtf8DeduplicatedStringPool
                 return false;
             }
 
-            var tableIndex = stringHash & ((1 << deduplicationTableBits) - 1);
-            var table = deduplicationTable[tableIndex];
-            if (table is null)
+            var tableSize = 1 << deduplicationTableBits;
+            var tableIndex = stringHash & (tableSize - 1);
+            for (var i = 0; i < tableSize; i++)
             {
-                offset = ulong.MaxValue;
-                return false;
-            }
-
-            var ct = table.Count;
-            for (var i = 0; i < ct; ++i)
-            {
-                var handle = table[i];
-                var poolOffset = handle & ((1UL << (64 - PoolIndexBits)) - 1);
-                var poolBytes = GetStringBytes(poolOffset);
-                if (poolBytes.Length != value.Length || !value.SequenceEqual(poolBytes))
+                var tableEntry = deduplicationTable[(tableIndex + i) % tableSize];
+                if (tableEntry == 0)
                 {
-                    continue;
+                    offset = ulong.MaxValue;
+                    return false;
                 }
 
-                offset = handle;
-                return true;
-            }
+                var handle = tableEntry - 1;
 
+                var poolOffset = handle & ((1UL << (64 - PoolIndexBits)) - 1);
+                var poolBytes = GetStringBytes(poolOffset);
+                if (poolBytes.Length == value.Length && value.SequenceEqual(poolBytes))
+                {
+                    offset = handle;
+                    return true;
+                }
+            }
             offset = ulong.MaxValue;
             return false;
         }
     }
 
-    private void AddToDeduplicationTable(int stringHash, ulong handle)
+    private void AddToDeduplicationTable(ulong[]? currentTable, int currentTableBits, int stringHash, ulong handle)
     {
-        if (deduplicationTable == null)
+        if (currentTable == null)
         {
             return;
         }
 
-        var tableIndex = stringHash & ((1 << deduplicationTableBits) - 1);
-        var table = deduplicationTable[tableIndex] ?? (deduplicationTable[tableIndex] = new List<ulong>());
+        var tableSize = 1 << currentTableBits;
+        var tableIndex = stringHash & (tableSize - 1);
+        for (var i = 0; i < tableSize; i++)
+        {
+            var tableEntry = currentTable[(tableIndex + i) % tableSize];
+            if (tableEntry == 0)
+            {
+                if (i > 0)
+                {
+                    ++overfillCount;
+                }
+                currentTable[(tableIndex + i) % tableSize] = handle + 1;
+                if (overfillCount > tableSize / 2)
+                {
+                    ResizeDeduplicationTable(currentTableBits + 1);
+                }
+                return;
+            }
+        }
+        ResizeDeduplicationTable(currentTableBits + 1);
+    }
 
-        table.Add(handle);
+    private void ResizeDeduplicationTable(int newBits)
+    {
+        if (deduplicationTable is null)
+        {
+            return;
+        }
+        var newDeduplicationTable = new ulong[1 << newBits];
+        overfillCount = 0;
+        var tableSize = 1 << deduplicationTableBits;
+        for (var i = 0; i < tableSize; ++i)
+        {
+            var tableEntry = deduplicationTable[i];
+            if (tableEntry != 0)
+            {
+                var handle = tableEntry - 1;
+                var poolOffset = handle & ((1UL << (64 - PoolIndexBits)) - 1);
+                var poolBytes = GetStringBytes(poolOffset);
+                AddToDeduplicationTable(newDeduplicationTable, newBits, (int)StringHash.Compute(poolBytes), handle);
+            }
+        }
+        deduplicationTable = newDeduplicationTable;
+        deduplicationTableBits = newBits;
     }
 
     public static string Get(ulong handle)
@@ -331,8 +371,7 @@ internal sealed class Utf8StringPool : IUtf8DeduplicatedStringPool
             throw new ArgumentException("Bad string pool offset", nameof(handle));
         }
 
-        var pool = Pools[(int)poolIndex]
-            ?? throw new ObjectDisposedException("String pool is disposed");
+        var pool = Pools[(int)poolIndex] ?? throw new ObjectDisposedException("String pool is disposed");
 
         return pool.GetFromPool(handle);
     }
@@ -400,8 +439,7 @@ internal sealed class Utf8StringPool : IUtf8DeduplicatedStringPool
             throw new ArgumentException("Bad string pool offset", nameof(handle));
         }
 
-        var pool = Pools[(int)poolIndex]
-            ?? throw new ObjectDisposedException("String pool is disposed");
+        var pool = Pools[(int)poolIndex] ?? throw new ObjectDisposedException("String pool is disposed");
 
         return pool.GetStringLength(handle & ((1L << (64 - PoolIndexBits)) - 1));
     }
@@ -550,13 +588,11 @@ internal sealed class Utf8StringPool : IUtf8DeduplicatedStringPool
 
         var aOffset = a & ((1L << (64 - PoolIndexBits)) - 1);
         var bOffset = b & ((1L << (64 - PoolIndexBits)) - 1);
-        var aPool = Pools[(int)aPoolIndex]
-            ?? throw new ObjectDisposedException("String pool is disposed");
+        var aPool = Pools[(int)aPoolIndex] ?? throw new ObjectDisposedException("String pool is disposed");
 
         if (aPoolIndex != bPoolIndex)
         {
-            var bPool = Pools[(int)bPoolIndex]
-                ?? throw new ObjectDisposedException("String pool is disposed");
+            var bPool = Pools[(int)bPoolIndex] ?? throw new ObjectDisposedException("String pool is disposed");
 
             using (aPool.disposeLock.PreventDispose())
             {
