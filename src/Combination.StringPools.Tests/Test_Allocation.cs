@@ -300,7 +300,7 @@ public class Test_Allocation
         var sum = 0L;
         for (var i = 0; i < 1000; ++i)
         {
-            var len = 2 + ("foobar " + i).Length;
+            var len = TestSupport.GetAllocationSize(("foobar " + i).Length);
             sum += len;
         }
 
