@@ -13,6 +13,9 @@ internal sealed class Utf8StringPool : IUtf8DeduplicatedStringPool
         PoolIndexBits =
             24; // Number of bits to use for pool index in handle (more bits = more pools, but less strings per pool)
 
+    // Maximum fill factor for deduplication table. Performance degrades when it is close to 1.
+    private const float MaxDeduplicationTableFillFactor = 0.9f;
+
     private static readonly List<Utf8StringPool?> Pools = new();
 
 #pragma warning disable IDE1006 // Naming Styles
@@ -21,7 +24,7 @@ internal sealed class Utf8StringPool : IUtf8DeduplicatedStringPool
     internal static long totalAddedBytes;
 #pragma warning restore IDE1006 // Naming Styles
 
-    internal int overfillCount;
+    internal int deduplicationFillCount;
 
     private readonly List<nint> pages = new();
     private readonly int index;
@@ -309,12 +312,9 @@ internal sealed class Utf8StringPool : IUtf8DeduplicatedStringPool
             var tableEntry = currentTable[(tableIndex + i) % tableSize];
             if (tableEntry == 0)
             {
-                if (i > 0)
-                {
-                    ++overfillCount;
-                }
+                ++deduplicationFillCount;
                 currentTable[(tableIndex + i) % tableSize] = handle + 1;
-                if (overfillCount > tableSize / 2)
+                if (deduplicationFillCount > tableSize * MaxDeduplicationTableFillFactor)
                 {
                     ResizeDeduplicationTable(currentTableBits + 1);
                 }
@@ -331,7 +331,7 @@ internal sealed class Utf8StringPool : IUtf8DeduplicatedStringPool
             return;
         }
         var newDeduplicationTable = new ulong[1 << newBits];
-        overfillCount = 0;
+        deduplicationFillCount = 0;
         var tableSize = 1 << deduplicationTableBits;
         for (var i = 0; i < tableSize; ++i)
         {

@@ -2,6 +2,7 @@
 using Performance;
 
 var summary = BenchmarkRunner.Run<Deduplication>();
+// var summary = BenchmarkRunner.Run<Filter>();
 //var summary = BenchmarkRunner.Run<Hashing>();
 
 #if false
