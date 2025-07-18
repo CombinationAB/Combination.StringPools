@@ -13,6 +13,9 @@ internal sealed class Utf8StringPool : IUtf8DeduplicatedStringPool
         PoolIndexBits =
             24; // Number of bits to use for pool index in handle (more bits = more pools, but less strings per pool)
 
+    // Maximum fill factor for deduplication table. Performance degrades when it is close to 1.
+    private const float MaxDeduplicationTableFillFactor = 0.8f;
+
     private static readonly List<Utf8StringPool?> Pools = new();
 
 #pragma warning disable IDE1006 // Naming Styles
@@ -311,7 +314,7 @@ internal sealed class Utf8StringPool : IUtf8DeduplicatedStringPool
             {
                 ++deduplicationFillCount;
                 currentTable[(tableIndex + i) % tableSize] = handle + 1;
-                if (deduplicationFillCount > tableSize * 0.8)
+                if (deduplicationFillCount > tableSize * MaxDeduplicationTableFillFactor)
                 {
                     ResizeDeduplicationTable(currentTableBits + 1);
                 }
