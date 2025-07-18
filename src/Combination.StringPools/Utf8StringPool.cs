@@ -21,7 +21,7 @@ internal sealed class Utf8StringPool : IUtf8DeduplicatedStringPool
     internal static long totalAddedBytes;
 #pragma warning restore IDE1006 // Naming Styles
 
-    internal int overfillCount;
+    internal int deduplicationFillCount;
 
     private readonly List<nint> pages = new();
     private readonly int index;
@@ -309,12 +309,9 @@ internal sealed class Utf8StringPool : IUtf8DeduplicatedStringPool
             var tableEntry = currentTable[(tableIndex + i) % tableSize];
             if (tableEntry == 0)
             {
-                if (i > 0)
-                {
-                    ++overfillCount;
-                }
+                ++deduplicationFillCount;
                 currentTable[(tableIndex + i) % tableSize] = handle + 1;
-                if (overfillCount > tableSize / 2)
+                if (deduplicationFillCount > tableSize * 0.8)
                 {
                     ResizeDeduplicationTable(currentTableBits + 1);
                 }
@@ -331,7 +328,7 @@ internal sealed class Utf8StringPool : IUtf8DeduplicatedStringPool
             return;
         }
         var newDeduplicationTable = new ulong[1 << newBits];
-        overfillCount = 0;
+        deduplicationFillCount = 0;
         var tableSize = 1 << deduplicationTableBits;
         for (var i = 0; i < tableSize; ++i)
         {
