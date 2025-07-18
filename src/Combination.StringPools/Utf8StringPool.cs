@@ -14,7 +14,7 @@ internal sealed class Utf8StringPool : IUtf8DeduplicatedStringPool
             24; // Number of bits to use for pool index in handle (more bits = more pools, but less strings per pool)
 
     // Maximum fill factor for deduplication table. Performance degrades when it is close to 1.
-    private const float MaxDeduplicationTableFillFactor = 0.8f;
+    private const float MaxDeduplicationTableFillFactor = 0.9f;
 
     private static readonly List<Utf8StringPool?> Pools = new();
 
